@@ -2,7 +2,8 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { CatalogProvider } from './context/CatalogContext';
 import { StoreProvider } from './context/StoreContext';
 import Header from './components/Header';
-import CatalogPage from './pages/CatalogPage';
+import CategoriesPage from './pages/CategoriesPage';
+import CategoryProductsPage from './pages/CategoryProductsPage';
 import CartPage from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
 import OrdersPage from './pages/OrdersPage';
@@ -17,7 +18,8 @@ export default function App() {
           <Header />
           <main className="app-main">
             <Routes>
-              <Route path="/" element={<CatalogPage />} />
+              <Route path="/" element={<CategoriesPage />} />
+              <Route path="/category/:categoryName" element={<CategoryProductsPage />} />
               <Route path="/cart" element={<CartPage />} />
               <Route path="/checkout" element={<CheckoutPage />} />
               <Route path="/orders" element={<OrdersPage />} />

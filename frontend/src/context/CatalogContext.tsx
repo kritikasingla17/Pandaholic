@@ -9,6 +9,7 @@ interface CatalogContextValue {
   loading: boolean;
   error: string | null;
   updateVariantAvailable: (variantId: string, available: number) => void;
+  refresh: () => Promise<void>;
 }
 
 const CatalogContext = createContext<CatalogContextValue | undefined>(undefined);
@@ -17,6 +18,16 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    try {
+      const data = await loadCatalog();
+      setProducts(data);
+      setError(null);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load catalog');
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -45,15 +56,23 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  // The 4 main storefront categories always lead the list, in this order;
+  // any other category (not part of the curated 4 yet) follows alphabetically.
+  const FEATURED_CATEGORY_ORDER = ["Valentine's Special", 'DIY', '2026 Calendars', 'Polaroids'];
+
   const categories = useMemo(() => {
     const set = new Set<string>();
     products.forEach((p) => set.add(p.category));
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
+    const featured = FEATURED_CATEGORY_ORDER.filter((c) => set.has(c));
+    const rest = Array.from(set)
+      .filter((c) => !FEATURED_CATEGORY_ORDER.includes(c))
+      .sort((a, b) => a.localeCompare(b));
+    return [...featured, ...rest];
   }, [products]);
 
   const value = useMemo(
-    () => ({ products, categories, loading, error, updateVariantAvailable }),
-    [products, categories, loading, error, updateVariantAvailable]
+    () => ({ products, categories, loading, error, updateVariantAvailable, refresh }),
+    [products, categories, loading, error, updateVariantAvailable, refresh]
   );
 
   return <CatalogContext.Provider value={value}>{children}</CatalogContext.Provider>;

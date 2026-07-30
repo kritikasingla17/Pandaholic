@@ -75,3 +75,166 @@ grant execute on function public.set_variant_stock(uuid, integer) to anon, authe
 -- trade-off for now, but before going live you should gate the Inventory
 -- page behind Supabase Auth and restrict this function to authenticated
 -- "staff" users (e.g. check auth.uid() against a staff table).
+
+-- Admin CRUD RPCs (Inventory page) -----------------------------------------
+-- The Inventory page manages full product/variant records directly, not
+-- just stock counts. As with set_variant_stock() above, these functions are
+-- granted to `anon` because there's no auth yet - anyone who opens
+-- /inventory can create, edit, or delete any product/variant. Same accepted
+-- trade-off, same recommendation: add Supabase Auth + a staff check before
+-- going live, then tighten these grants to `authenticated` only.
+
+create or replace function public.admin_upsert_product(
+  p_product_id uuid,
+  p_title text,
+  p_description text,
+  p_category text,
+  p_tags text[],
+  p_image text,
+  p_images text[],
+  p_option_names text[],
+  p_personalizable boolean,
+  p_status text
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_id uuid;
+  v_base_handle text;
+  v_handle text;
+  v_suffix int := 1;
+begin
+  if p_title is null or trim(p_title) = '' then
+    raise exception 'Title is required';
+  end if;
+
+  if p_product_id is null then
+    v_base_handle := trim(both '-' from lower(regexp_replace(trim(p_title), '[^a-zA-Z0-9]+', '-', 'g')));
+    if v_base_handle = '' then
+      v_base_handle := 'product';
+    end if;
+    v_handle := v_base_handle;
+    while exists (select 1 from products where handle = v_handle) loop
+      v_suffix := v_suffix + 1;
+      v_handle := v_base_handle || '-' || v_suffix;
+    end loop;
+
+    insert into products (handle, title, description, category, tags, image, images, option_names, personalizable, status)
+    values (
+      v_handle,
+      trim(p_title),
+      coalesce(p_description, ''),
+      coalesce(nullif(trim(p_category), ''), 'Other'),
+      coalesce(p_tags, '{}'),
+      coalesce(p_image, ''),
+      coalesce(p_images, '{}'),
+      coalesce(p_option_names, '{}'),
+      coalesce(p_personalizable, true),
+      coalesce(nullif(trim(p_status), ''), 'active')
+    )
+    returning id into v_id;
+  else
+    update products set
+      title = trim(p_title),
+      description = coalesce(p_description, ''),
+      category = coalesce(nullif(trim(p_category), ''), 'Other'),
+      tags = coalesce(p_tags, '{}'),
+      image = coalesce(p_image, ''),
+      images = coalesce(p_images, '{}'),
+      option_names = coalesce(p_option_names, '{}'),
+      personalizable = coalesce(p_personalizable, true),
+      status = coalesce(nullif(trim(p_status), ''), 'active')
+    where id = p_product_id
+    returning id into v_id;
+
+    if v_id is null then
+      raise exception 'Product % not found', p_product_id;
+    end if;
+  end if;
+
+  return v_id;
+end;
+$$;
+
+grant execute on function public.admin_upsert_product(uuid, text, text, text, text[], text, text[], text[], boolean, text) to anon, authenticated;
+
+create or replace function public.admin_delete_product(p_product_id uuid)
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  delete from products where id = p_product_id;
+$$;
+
+grant execute on function public.admin_delete_product(uuid) to anon, authenticated;
+
+create or replace function public.admin_upsert_variant(
+  p_variant_id uuid,
+  p_product_id uuid,
+  p_sku text,
+  p_options jsonb,
+  p_price numeric,
+  p_compare_at_price numeric,
+  p_available integer,
+  p_image text
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_id uuid;
+begin
+  if p_variant_id is null then
+    if p_product_id is null then
+      raise exception 'p_product_id is required to create a variant';
+    end if;
+
+    insert into product_variants (product_id, sku, options, price, compare_at_price, available, image)
+    values (
+      p_product_id,
+      coalesce(p_sku, ''),
+      coalesce(p_options, '[]'::jsonb),
+      greatest(coalesce(p_price, 0), 0),
+      nullif(p_compare_at_price, 0),
+      greatest(coalesce(p_available, 0), 0),
+      p_image
+    )
+    returning id into v_id;
+  else
+    update product_variants set
+      sku = coalesce(p_sku, ''),
+      options = coalesce(p_options, '[]'::jsonb),
+      price = greatest(coalesce(p_price, 0), 0),
+      compare_at_price = nullif(p_compare_at_price, 0),
+      available = greatest(coalesce(p_available, 0), 0),
+      image = p_image
+    where id = p_variant_id
+    returning id into v_id;
+
+    if v_id is null then
+      raise exception 'Variant % not found', p_variant_id;
+    end if;
+  end if;
+
+  return v_id;
+end;
+$$;
+
+grant execute on function public.admin_upsert_variant(uuid, uuid, text, jsonb, numeric, numeric, integer, text) to anon, authenticated;
+
+create or replace function public.admin_delete_variant(p_variant_id uuid)
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  delete from product_variants where id = p_variant_id;
+$$;
+
+grant execute on function public.admin_delete_variant(uuid) to anon, authenticated;

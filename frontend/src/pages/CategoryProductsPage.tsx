@@ -1,27 +1,25 @@
 import { useMemo, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
 import { useCatalog } from '../context/CatalogContext';
-import CategoryNav from '../components/CategoryNav';
 import ProductCard from '../components/ProductCard';
 import ProductModal from '../components/ProductModal';
 import type { Product } from '../types';
 
-export default function CatalogPage() {
+export default function CategoryProductsPage() {
+  const { categoryName } = useParams<{ categoryName: string }>();
+  const category = decodeURIComponent(categoryName ?? '');
   const { products, categories, loading, error } = useCatalog();
-  const [activeCategory, setActiveCategory] = useState('All');
   const [search, setSearch] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   const filtered = useMemo(() => {
+    const query = search.trim().toLowerCase();
     return products.filter((p) => {
-      const matchesCategory = activeCategory === 'All' || p.category === activeCategory;
-      const query = search.trim().toLowerCase();
-      const matchesSearch =
-        !query ||
-        p.title.toLowerCase().includes(query) ||
-        p.tags.some((t) => t.toLowerCase().includes(query));
-      return matchesCategory && matchesSearch;
+      if (p.category !== category) return false;
+      if (!query) return true;
+      return p.title.toLowerCase().includes(query) || p.tags.some((t) => t.toLowerCase().includes(query));
     });
-  }, [products, activeCategory, search]);
+  }, [products, category, search]);
 
   if (loading) {
     return <div className="state-message">Loading catalog…</div>;
@@ -31,11 +29,21 @@ export default function CatalogPage() {
     return <div className="state-message state-message--error">Couldn't load catalog: {error}</div>;
   }
 
+  if (!categories.includes(category)) {
+    return (
+      <div className="state-message">
+        Category not found. <Link to="/">Back to all categories</Link>
+      </div>
+    );
+  }
+
   return (
     <div className="catalog-page">
       <div className="catalog-hero">
-        <h1>Handmade, made just for you</h1>
-        <p>Journals, photo books, wedding cards, Spotify plaques, fridge magnets, LED boxes & more — every piece customisable.</p>
+        <Link to="/" className="back-link">
+          ← All categories
+        </Link>
+        <h1>{category}</h1>
         <input
           className="search-input"
           type="search"
@@ -44,8 +52,6 @@ export default function CatalogPage() {
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
-
-      <CategoryNav categories={categories} active={activeCategory} onSelect={setActiveCategory} />
 
       {filtered.length === 0 ? (
         <div className="state-message">No products found.</div>

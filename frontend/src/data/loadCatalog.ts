@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabaseClient';
 import type { Product, ProductVariant, VariantOption } from '../types';
 
-interface ProductRow {
+export interface ProductRow {
   id: string;
   handle: string;
   title: string;
@@ -15,7 +15,7 @@ interface ProductRow {
   status: string | null;
 }
 
-interface VariantRow {
+export interface VariantRow {
   id: string;
   product_id: string;
   sku: string | null;
@@ -26,24 +26,15 @@ interface VariantRow {
   image: string | null;
 }
 
-export async function loadCatalog(): Promise<Product[]> {
-  const [{ data: productRows, error: productsError }, { data: variantRows, error: variantsError }] =
-    await Promise.all([
-      supabase.from('products').select('*').eq('status', 'active'),
-      supabase.from('product_variants').select('*'),
-    ]);
-
-  if (productsError) throw new Error(`Failed to load products: ${productsError.message}`);
-  if (variantsError) throw new Error(`Failed to load variants: ${variantsError.message}`);
-
+export function mapRowsToProducts(productRows: ProductRow[], variantRows: VariantRow[]): Product[] {
   const variantsByProduct = new Map<string, VariantRow[]>();
-  for (const row of (variantRows ?? []) as VariantRow[]) {
+  for (const row of variantRows) {
     const existing = variantsByProduct.get(row.product_id);
     if (existing) existing.push(row);
     else variantsByProduct.set(row.product_id, [row]);
   }
 
-  const products: Product[] = ((productRows ?? []) as ProductRow[]).map((row) => {
+  const products: Product[] = productRows.map((row) => {
     const variants: ProductVariant[] = (variantsByProduct.get(row.id) ?? []).map((v) => ({
       id: v.id,
       sku: v.sku ?? '',
@@ -57,6 +48,7 @@ export async function loadCatalog(): Promise<Product[]> {
     const prices = variants.map((v) => v.price).filter((p) => p > 0);
 
     return {
+      id: row.id,
       handle: row.handle,
       title: row.title,
       description: row.description ?? '',
@@ -76,4 +68,17 @@ export async function loadCatalog(): Promise<Product[]> {
 
   products.sort((a, b) => a.title.localeCompare(b.title));
   return products;
+}
+
+export async function loadCatalog(): Promise<Product[]> {
+  const [{ data: productRows, error: productsError }, { data: variantRows, error: variantsError }] =
+    await Promise.all([
+      supabase.from('products').select('*').eq('status', 'active'),
+      supabase.from('product_variants').select('*'),
+    ]);
+
+  if (productsError) throw new Error(`Failed to load products: ${productsError.message}`);
+  if (variantsError) throw new Error(`Failed to load variants: ${variantsError.message}`);
+
+  return mapRowsToProducts((productRows ?? []) as ProductRow[], (variantRows ?? []) as VariantRow[]);
 }

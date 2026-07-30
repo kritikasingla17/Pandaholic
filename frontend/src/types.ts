@@ -14,6 +14,7 @@ export interface ProductVariant {
 }
 
 export interface Product {
+  id: string;
   handle: string;
   title: string;
   description: string;

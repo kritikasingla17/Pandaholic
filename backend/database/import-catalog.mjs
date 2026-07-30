@@ -58,12 +58,37 @@ function inventoryKey(handle, o1, o2, o3) {
   return [handle, o1, o2, o3].map((v) => (v || '').trim().toLowerCase()).join('::');
 }
 
-function deriveCategory(type, productCategory) {
-  const trimmedType = (type || '').trim();
-  if (trimmedType) return trimmedType;
-  const segments = (productCategory || '').split('>').map((s) => s.trim()).filter(Boolean);
-  if (segments.length > 0) return segments[segments.length - 1];
-  return 'Uncategorized';
+// The store's 4 main storefront categories (as of now). Products not listed
+// here keep whatever category is auto-derived from the CSV's Type / Product
+// Category columns (see deriveCategory below) - they're not hidden, just not
+// part of this curated grouping yet.
+const CATEGORY_OVERRIDES_BY_HANDLE = {
+  // Valentine's Special
+  'our-song-personalized-spotify-love-card': "Valentine's Special",
+  'blooming-love-3d-pop-up-flower-bouquet-card': "Valentine's Special",
+  'pun-love-cards-gift-box-24-cute-funny-cards-for-couples': "Valentine's Special",
+  'king-queen-of-my-heart-couple-love-cards-set-of-2': "Valentine's Special",
+  'love-vouchers-gift-set-romantic-personalized-coupon-cards': "Valentine's Special",
+  'personalized-love-photo-frame-for-couples-gifting': "Valentine's Special",
+
+  // DIY (bookmarks, fridge magnets, journaling, photo frames, polaroid strips)
+  bookmarks: 'DIY',
+  'magnetic-calendar': 'DIY',
+  'fridge-magnets-personalized-pack-of-4': 'DIY',
+  'the-ultimate-journaling-kit-✨': 'DIY',
+  'custom-personalised-farewell-photo-frame': 'DIY',
+  'polaroid-strips-custom': 'DIY',
+
+  // 2026 Calendars
+  'desk-calendar-2026': '2026 Calendars',
+  'calendar-2026-personalised-custom': '2026 Calendars',
+
+  // Polaroids
+  'polaroids-prints-customized': 'Polaroids',
+};
+
+function deriveCategory(handle) {
+  return CATEGORY_OVERRIDES_BY_HANDLE[handle] || 'Other';
 }
 
 function buildProducts() {
@@ -151,7 +176,7 @@ function buildProducts() {
       handle,
       title: headRow.Title.trim(),
       description: stripHtml(headRow['Body (HTML)']),
-      category: deriveCategory(headRow.Type, headRow['Product Category']),
+      category: deriveCategory(handle),
       tags,
       image: images[0] ?? '',
       images,
