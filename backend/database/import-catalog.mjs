@@ -85,10 +85,16 @@ const CATEGORY_OVERRIDES_BY_HANDLE = {
 
   // Polaroids
   'polaroids-prints-customized': 'Polaroids',
+
+  // Poster (the handle itself doesn't contain "poster", unlike the rest of
+  // this category which is auto-derived below)
+  'new-box': 'Poster',
 };
 
 function deriveCategory(handle) {
-  return CATEGORY_OVERRIDES_BY_HANDLE[handle] || 'Other';
+  if (CATEGORY_OVERRIDES_BY_HANDLE[handle]) return CATEGORY_OVERRIDES_BY_HANDLE[handle];
+  if (handle.toLowerCase().includes('poster')) return 'Poster';
+  return 'Other';
 }
 
 function buildProducts() {

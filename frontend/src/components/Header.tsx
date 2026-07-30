@@ -8,7 +8,7 @@ export default function Header() {
     <header className="site-header">
       <div className="site-header__inner">
         <NavLink to="/" className="brand">
-          🐼 Pandaholic
+          <img src="/logo.png" alt="Pandaholic" className="brand__logo" />
         </NavLink>
         <nav className="main-nav">
           <NavLink to="/" end className={({ isActive }) => (isActive ? 'active' : '')}>

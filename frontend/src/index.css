@@ -67,6 +67,14 @@ button {
   font-weight: 700;
   color: var(--pink-dark);
   margin-right: auto;
+  display: flex;
+  align-items: center;
+}
+
+.brand__logo {
+  height: 44px;
+  width: auto;
+  display: block;
 }
 
 .main-nav {

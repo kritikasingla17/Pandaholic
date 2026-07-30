@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   CircularProgress,
@@ -11,7 +12,6 @@ import {
   DialogTitle,
   Grid,
   InputAdornment,
-  MenuItem,
   Stack,
   TextField,
   Typography,
@@ -80,6 +80,15 @@ export default function InventoryPage() {
       );
     });
   }, [products, search]);
+
+  // Categories are dynamic, not a fixed list: suggest every category already
+  // in use (across all products, including drafts) plus the curated
+  // baseline, but the admin can always type a brand new one.
+  const categoryOptions = useMemo(() => {
+    const set = new Set<string>(CATEGORY_OPTIONS);
+    products.forEach((p) => set.add(p.category));
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [products]);
 
   function updateNewProduct(field: keyof typeof EMPTY_NEW_PRODUCT, value: string) {
     setNewProduct((prev) => ({ ...prev, [field]: value }));
@@ -187,7 +196,12 @@ export default function InventoryPage() {
           <Typography color="text.secondary">No products found.</Typography>
         ) : (
           filtered.map((product) => (
-            <InventoryProductEditor key={product.id} product={product} onChanged={handleChanged} />
+            <InventoryProductEditor
+              key={product.id}
+              product={product}
+              categoryOptions={categoryOptions}
+              onChanged={handleChanged}
+            />
           ))
         )}
       </Stack>
@@ -208,19 +222,13 @@ export default function InventoryPage() {
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField
-                  select
-                  label="Category"
-                  value={newProduct.category}
-                  onChange={(e) => updateNewProduct('category', e.target.value)}
-                  fullWidth
-                >
-                  {CATEGORY_OPTIONS.map((c) => (
-                    <MenuItem key={c} value={c}>
-                      {c}
-                    </MenuItem>
-                  ))}
-                </TextField>
+                <Autocomplete
+                  freeSolo
+                  options={categoryOptions}
+                  inputValue={newProduct.category}
+                  onInputChange={(_, value) => updateNewProduct('category', value)}
+                  renderInput={(params) => <TextField {...params} label="Category" fullWidth />}
+                />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField

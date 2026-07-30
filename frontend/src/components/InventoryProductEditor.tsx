@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   Alert,
+  Autocomplete,
   Avatar,
   Box,
   Button,
@@ -28,14 +29,14 @@ import SaveIcon from '@mui/icons-material/Save';
 import type { Product, ProductVariant } from '../types';
 import { deleteProduct, deleteVariant, saveProduct, saveVariant } from '../data/adminCatalog';
 import { formatOptionsText, parseOptionsText } from '../utils/format';
-import { CATEGORY_OPTIONS } from '../constants/categories';
 
 interface EditorProps {
   product: Product;
+  categoryOptions: string[];
   onChanged: () => void;
 }
 
-export default function InventoryProductEditor({ product, onChanged }: EditorProps) {
+export default function InventoryProductEditor({ product, categoryOptions, onChanged }: EditorProps) {
   const [title, setTitle] = useState(product.title);
   const [category, setCategory] = useState(product.category);
   const [description, setDescription] = useState(product.description);
@@ -44,13 +45,6 @@ export default function InventoryProductEditor({ product, onChanged }: EditorPro
   const [expanded, setExpanded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Include the product's current category even if it's not one of the 5
-  // curated options (e.g. legacy/auto-derived data), so saving never
-  // silently changes it to something the admin didn't pick.
-  const categoryOptions = CATEGORY_OPTIONS.includes(product.category)
-    ? CATEGORY_OPTIONS
-    : [product.category, ...CATEGORY_OPTIONS];
 
   async function handleSaveProduct() {
     if (!title.trim()) {
@@ -137,20 +131,14 @@ export default function InventoryProductEditor({ product, onChanged }: EditorPro
             size="small"
             fullWidth
           />
-          <TextField
-            select
-            label="Category"
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            size="small"
+          <Autocomplete
+            freeSolo
+            options={categoryOptions}
+            inputValue={category}
+            onInputChange={(_, value) => setCategory(value)}
             sx={{ minWidth: 180 }}
-          >
-            {categoryOptions.map((c) => (
-              <MenuItem key={c} value={c}>
-                {c}
-              </MenuItem>
-            ))}
-          </TextField>
+            renderInput={(params) => <TextField {...params} label="Category" size="small" />}
+          />
           <TextField
             select
             label="Status"
