@@ -88,7 +88,7 @@ export default function ProductModal({ product, onClose }: ProductModalProps) {
         <div className="modal__content">
           <div className="modal__image">
             {product.image ? (
-              <img src={product.image} alt={product.title} />
+              <img src={product.image} alt={product.title} decoding="async" fetchPriority="high" />
             ) : (
               <div className="product-card__placeholder">No image</div>
             )}

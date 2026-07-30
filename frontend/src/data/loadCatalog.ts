@@ -71,14 +71,17 @@ export function mapRowsToProducts(productRows: ProductRow[], variantRows: Varian
 }
 
 export async function loadCatalog(): Promise<Product[]> {
-  const [{ data: productRows, error: productsError }, { data: variantRows, error: variantsError }] =
-    await Promise.all([
-      supabase.from('products').select('*').eq('status', 'active'),
-      supabase.from('product_variants').select('*'),
-    ]);
+  // Fetch products and their variants in a single round trip using
+  // PostgREST's embedded-resource syntax (based on the product_variants ->
+  // products foreign key), instead of two separate queries.
+  const { data, error } = await supabase
+    .from('products')
+    .select('*, product_variants(*)')
+    .eq('status', 'active');
 
-  if (productsError) throw new Error(`Failed to load products: ${productsError.message}`);
-  if (variantsError) throw new Error(`Failed to load variants: ${variantsError.message}`);
+  if (error) throw new Error(`Failed to load products: ${error.message}`);
 
-  return mapRowsToProducts((productRows ?? []) as ProductRow[], (variantRows ?? []) as VariantRow[]);
+  const productRows = (data ?? []) as (ProductRow & { product_variants: VariantRow[] })[];
+  const variantRows = productRows.flatMap((row) => row.product_variants ?? []);
+  return mapRowsToProducts(productRows, variantRows);
 }

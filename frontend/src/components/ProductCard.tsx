@@ -19,7 +19,7 @@ export default function ProductCard({ product, onSelect }: ProductCardProps) {
     <button className="product-card" onClick={() => onSelect(product)} disabled={outOfStock}>
       <div className="product-card__image">
         {product.image ? (
-          <img src={product.image} alt={product.title} loading="lazy" />
+          <img src={product.image} alt={product.title} loading="lazy" decoding="async" />
         ) : (
           <div className="product-card__placeholder">No image</div>
         )}

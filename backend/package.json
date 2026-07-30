@@ -5,11 +5,13 @@
   "type": "module",
   "scripts": {
     "import:catalog": "node database/import-catalog.mjs",
-    "migrate:images": "node database/migrate-images-to-storage.mjs"
+    "migrate:images": "node database/migrate-images-to-storage.mjs",
+    "optimize:images": "node database/optimize-storage-images.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.111.0",
-    "papaparse": "^5.5.4"
+    "papaparse": "^5.5.4",
+    "sharp": "^0.34.5"
   },
   "devDependencies": {
     "dotenv": "^17.4.2"

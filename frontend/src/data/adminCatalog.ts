@@ -14,16 +14,15 @@ import { mapRowsToProducts, type ProductRow, type VariantRow } from './loadCatal
 // should be gated behind Supabase Auth + a staff check before going live.
 
 export async function fetchAllProductsForAdmin(): Promise<Product[]> {
-  const [{ data: productRows, error: productsError }, { data: variantRows, error: variantsError }] =
-    await Promise.all([
-      supabase.from('products').select('*'),
-      supabase.from('product_variants').select('*'),
-    ]);
+  // Same single-round-trip embedded query as loadCatalog(), just without the
+  // active-only filter so staff can manage drafts too.
+  const { data, error } = await supabase.from('products').select('*, product_variants(*)');
 
-  if (productsError) throw new Error(`Failed to load products: ${productsError.message}`);
-  if (variantsError) throw new Error(`Failed to load variants: ${variantsError.message}`);
+  if (error) throw new Error(`Failed to load products: ${error.message}`);
 
-  return mapRowsToProducts((productRows ?? []) as ProductRow[], (variantRows ?? []) as VariantRow[]);
+  const productRows = (data ?? []) as (ProductRow & { product_variants: VariantRow[] })[];
+  const variantRows = productRows.flatMap((row) => row.product_variants ?? []);
+  return mapRowsToProducts(productRows, variantRows);
 }
 
 export interface ProductInput {

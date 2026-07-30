@@ -19,7 +19,7 @@ export default function CartPage() {
       <div className="cart-list">
         {cart.map((item) => (
           <div className="cart-item" key={item.id}>
-            <img src={item.image} alt={item.productTitle} />
+            <img src={item.image} alt={item.productTitle} loading="lazy" decoding="async" />
             <div className="cart-item__info">
               <h3>{item.productTitle}</h3>
               {item.variantOptions.length > 0 && (
