@@ -29,6 +29,10 @@ export default function ProductModal({ product, onClose }: ProductModalProps) {
 
   const available = selectedVariant ? getAvailable(selectedVariant.id, selectedVariant.available) : 0;
 
+  // Posters (and any other product with a single option axis, e.g. just
+  // "Size") get a clearer pick-a-size chip UI instead of a generic dropdown.
+  const singleOptionName = product.optionNames.length === 1 ? product.optionNames[0] : null;
+
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     setPhotoError(null);
@@ -97,22 +101,50 @@ export default function ProductModal({ product, onClose }: ProductModalProps) {
             </p>
             <p className="modal__description">{product.description}</p>
 
-            {product.variants.length > 1 && (
-              <label className="field">
-                <span>Choose option</span>
-                <select value={variantId} onChange={(e) => setVariantId(e.target.value)}>
-                  {product.variants.map((v) => {
-                    const stock = getAvailable(v.id, v.available);
-                    const label = v.options.map((o) => `${o.name}: ${o.value}`).join(', ') || 'Default';
-                    return (
-                      <option key={v.id} value={v.id} disabled={stock <= 0}>
-                        {label} — {formatCurrency(v.price)} {stock <= 0 ? '(out of stock)' : ''}
-                      </option>
-                    );
-                  })}
-                </select>
-              </label>
-            )}
+            {product.variants.length > 1 &&
+              (singleOptionName ? (
+                <div className="field">
+                  <span>{singleOptionName.toLowerCase() === 'size' ? 'Choose print size' : `Choose ${singleOptionName}`}</span>
+                  <div className="size-option-group">
+                    {product.variants.map((v) => {
+                      const stock = getAvailable(v.id, v.available);
+                      const value = v.options[0]?.value || 'Default';
+                      const outOfStock = stock <= 0;
+                      return (
+                        <button
+                          key={v.id}
+                          type="button"
+                          className={
+                            'size-option' +
+                            (v.id === variantId ? ' size-option--selected' : '') +
+                            (outOfStock ? ' size-option--disabled' : '')
+                          }
+                          onClick={() => setVariantId(v.id)}
+                          disabled={outOfStock}
+                        >
+                          {value}
+                          {outOfStock && <span className="size-option__note"> (out of stock)</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <label className="field">
+                  <span>Choose option</span>
+                  <select value={variantId} onChange={(e) => setVariantId(e.target.value)}>
+                    {product.variants.map((v) => {
+                      const stock = getAvailable(v.id, v.available);
+                      const label = v.options.map((o) => `${o.name}: ${o.value}`).join(', ') || 'Default';
+                      return (
+                        <option key={v.id} value={v.id} disabled={stock <= 0}>
+                          {label} — {formatCurrency(v.price)} {stock <= 0 ? '(out of stock)' : ''}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </label>
+              ))}
 
             <p className={available > 0 ? 'stock-note' : 'stock-note stock-note--out'}>
               {available > 0 ? `${available} in stock` : 'Out of stock'}

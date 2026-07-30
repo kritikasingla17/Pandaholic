@@ -61,6 +61,25 @@ export default function CheckoutPage() {
 
         {error && <p className="field-error">{error}</p>}
 
+        <div className="checkout-items">
+          <h2 className="checkout-items__title">Order summary</h2>
+          {cart.map((item) => (
+            <div className="checkout-items__row" key={item.id}>
+              <span>
+                {item.productTitle}
+                {item.variantOptions.length > 0 && (
+                  <span className="checkout-items__option">
+                    {' '}
+                    ({item.variantOptions.map((o) => o.value).join(', ')})
+                  </span>
+                )}
+                {' '}× {item.quantity}
+              </span>
+              <span>{formatCurrency(item.unitPrice * item.quantity)}</span>
+            </div>
+          ))}
+        </div>
+
         <div className="cart-summary">
           <span>Order total</span>
           <strong>{formatCurrency(cartTotal)}</strong>
