@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "import:catalog": "node database/import-catalog.mjs"
+    "import:catalog": "node database/import-catalog.mjs",
+    "migrate:images": "node database/migrate-images-to-storage.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.111.0",

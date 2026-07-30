@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { ChangeEvent } from 'react';
 import {
   Alert,
   Autocomplete,
@@ -26,9 +27,11 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ImageNotSupportedIcon from '@mui/icons-material/ImageNotSupported';
 import SaveIcon from '@mui/icons-material/Save';
+import UploadIcon from '@mui/icons-material/Upload';
 import type { Product, ProductVariant } from '../types';
 import { deleteProduct, deleteVariant, saveProduct, saveVariant } from '../data/adminCatalog';
 import { formatOptionsText, parseOptionsText } from '../utils/format';
+import { uploadProductImage } from '../lib/uploadImage';
 
 interface EditorProps {
   product: Product;
@@ -45,6 +48,23 @@ export default function InventoryProductEditor({ product, categoryOptions, onCha
   const [expanded, setExpanded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  async function handleImageFileChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setUploadingImage(true);
+    setError(null);
+    try {
+      const url = await uploadProductImage(file, product.handle);
+      setImage(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to upload image');
+    } finally {
+      setUploadingImage(false);
+    }
+  }
 
   async function handleSaveProduct() {
     if (!title.trim()) {
@@ -61,7 +81,7 @@ export default function InventoryProductEditor({ product, categoryOptions, onCha
           category,
           tags: product.tags,
           image,
-          images: product.images,
+          images: image ? [image] : [],
           optionNames: product.optionNames,
           personalizable: product.personalizable,
           status,
@@ -187,13 +207,13 @@ export default function InventoryProductEditor({ product, categoryOptions, onCha
               fullWidth
               size="small"
             />
-            <TextField
-              label="Image URL"
-              value={image}
-              onChange={(e) => setImage(e.target.value)}
-              fullWidth
-              size="small"
-            />
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+              {image ? <Avatar variant="rounded" src={image} sx={{ width: 48, height: 48 }} /> : null}
+              <Button component="label" variant="outlined" size="small" startIcon={<UploadIcon />} disabled={uploadingImage}>
+                {uploadingImage ? 'Uploading…' : image ? 'Replace image' : 'Upload image'}
+                <input type="file" accept="image/*" hidden onChange={handleImageFileChange} />
+              </Button>
+            </Stack>
           </Stack>
         </Collapse>
 

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { FormEvent } from 'react';
+import type { ChangeEvent, FormEvent } from 'react';
 import {
   Alert,
   Autocomplete,
+  Avatar,
   Box,
   Button,
   CircularProgress,
@@ -18,10 +19,12 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
+import UploadIcon from '@mui/icons-material/Upload';
 import InventoryProductEditor from '../components/InventoryProductEditor';
 import { fetchAllProductsForAdmin, saveProduct, saveVariant } from '../data/adminCatalog';
 import { useCatalog } from '../context/CatalogContext';
 import { CATEGORY_OPTIONS } from '../constants/categories';
+import { uploadProductImage } from '../lib/uploadImage';
 import type { Product } from '../types';
 
 const EMPTY_NEW_PRODUCT = {
@@ -44,6 +47,8 @@ export default function InventoryPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newProduct, setNewProduct] = useState(EMPTY_NEW_PRODUCT);
   const [creating, setCreating] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setError(null);
@@ -92,6 +97,22 @@ export default function InventoryPage() {
 
   function updateNewProduct(field: keyof typeof EMPTY_NEW_PRODUCT, value: string) {
     setNewProduct((prev) => ({ ...prev, [field]: value }));
+  }
+
+  async function handleImageFileChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setUploadingImage(true);
+    setUploadError(null);
+    try {
+      const url = await uploadProductImage(file, 'new');
+      updateNewProduct('image', url);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Failed to upload image');
+    } finally {
+      setUploadingImage(false);
+    }
   }
 
   function closeAddForm() {
@@ -231,12 +252,25 @@ export default function InventoryPage() {
                 />
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField
-                  label="Image URL"
-                  value={newProduct.image}
-                  onChange={(e) => updateNewProduct('image', e.target.value)}
-                  fullWidth
-                />
+                <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+                  {newProduct.image ? (
+                    <Avatar variant="rounded" src={newProduct.image} sx={{ width: 48, height: 48 }} />
+                  ) : null}
+                  <Button
+                    component="label"
+                    variant="outlined"
+                    startIcon={<UploadIcon />}
+                    disabled={uploadingImage}
+                  >
+                    {uploadingImage ? 'Uploading…' : newProduct.image ? 'Replace image' : 'Upload image'}
+                    <input type="file" accept="image/*" hidden onChange={handleImageFileChange} />
+                  </Button>
+                </Stack>
+                {uploadError && (
+                  <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
+                    {uploadError}
+                  </Typography>
+                )}
               </Grid>
               <Grid size={{ xs: 12, sm: 6 }}>
                 <TextField
