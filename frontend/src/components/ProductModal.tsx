@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { Product, ProductVariant, Personalization } from '../types';
 import { useStore } from '../context/StoreContext';
-import { formatCurrency } from '../utils/format';
+import { formatCurrency, formatDescription } from '../utils/format';
 
 interface ProductModalProps {
   product: Product;
@@ -9,6 +9,8 @@ interface ProductModalProps {
 }
 
 const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
+const DESCRIPTION_HEADINGS = new Set(['Product Description', 'Specifications']);
+const DESCRIPTION_LABEL_LINE = /^([A-Z][a-zA-Z]*(?:\s[A-Za-z]+){0,2}:)\s(.*)$/;
 
 export default function ProductModal({ product, onClose }: ProductModalProps) {
   const { getAvailable, addToCart } = useStore();
@@ -26,6 +28,8 @@ export default function ProductModal({ product, onClose }: ProductModalProps) {
     () => product.variants.find((v) => v.id === variantId),
     [product.variants, variantId]
   );
+
+  const descriptionLines = useMemo(() => formatDescription(product.description), [product.description]);
 
   const available = selectedVariant ? getAvailable(selectedVariant.id, selectedVariant.available) : 0;
 
@@ -99,7 +103,31 @@ export default function ProductModal({ product, onClose }: ProductModalProps) {
             <p className="modal__price">
               {selectedVariant ? formatCurrency(selectedVariant.price) : ''}
             </p>
-            <p className="modal__description">{product.description}</p>
+            {descriptionLines.length > 0 && (
+              <div className="modal__description">
+                {descriptionLines.map((line, i) => {
+                  if (DESCRIPTION_HEADINGS.has(line)) {
+                    return (
+                      <p key={i} className="modal__description-heading">
+                        {line}
+                      </p>
+                    );
+                  }
+                  const labelMatch = line.match(DESCRIPTION_LABEL_LINE);
+                  return (
+                    <p key={i} className="modal__description-line">
+                      {labelMatch ? (
+                        <>
+                          <strong>{labelMatch[1]}</strong> {labelMatch[2]}
+                        </>
+                      ) : (
+                        line
+                      )}
+                    </p>
+                  );
+                })}
+              </div>
+            )}
 
             {product.variants.length > 1 &&
               (singleOptionName ? (
