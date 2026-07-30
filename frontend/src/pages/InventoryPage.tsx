@@ -254,7 +254,12 @@ export default function InventoryPage() {
               <Grid size={{ xs: 12, sm: 6 }}>
                 <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
                   {newProduct.image ? (
-                    <Avatar variant="rounded" src={newProduct.image} sx={{ width: 48, height: 48 }} />
+                    <Avatar
+                      variant="rounded"
+                      src={newProduct.image}
+                      sx={{ width: 48, height: 48 }}
+                      slotProps={{ img: { loading: 'lazy', decoding: 'async' } }}
+                    />
                   ) : null}
                   <Button
                     component="label"

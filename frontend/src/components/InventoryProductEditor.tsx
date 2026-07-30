@@ -138,7 +138,12 @@ export default function InventoryProductEditor({ product, categoryOptions, onCha
           sx={{ alignItems: { xs: 'stretch', sm: 'center' } }}
         >
           {image ? (
-            <Avatar variant="rounded" src={image} sx={{ width: 56, height: 56 }} />
+            <Avatar
+              variant="rounded"
+              src={image}
+              sx={{ width: 56, height: 56 }}
+              slotProps={{ img: { loading: 'lazy', decoding: 'async' } }}
+            />
           ) : (
             <Avatar variant="rounded" sx={{ width: 56, height: 56, bgcolor: 'action.hover' }}>
               <ImageNotSupportedIcon color="disabled" fontSize="small" />
@@ -208,7 +213,14 @@ export default function InventoryProductEditor({ product, categoryOptions, onCha
               size="small"
             />
             <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-              {image ? <Avatar variant="rounded" src={image} sx={{ width: 48, height: 48 }} /> : null}
+              {image ? (
+                <Avatar
+                  variant="rounded"
+                  src={image}
+                  sx={{ width: 48, height: 48 }}
+                  slotProps={{ img: { loading: 'lazy', decoding: 'async' } }}
+                />
+              ) : null}
               <Button component="label" variant="outlined" size="small" startIcon={<UploadIcon />} disabled={uploadingImage}>
                 {uploadingImage ? 'Uploading…' : image ? 'Replace image' : 'Upload image'}
                 <input type="file" accept="image/*" hidden onChange={handleImageFileChange} />
