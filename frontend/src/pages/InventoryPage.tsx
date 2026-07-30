@@ -1,5 +1,23 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
+import {
+  Alert,
+  Box,
+  Button,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Grid,
+  InputAdornment,
+  MenuItem,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import SearchIcon from '@mui/icons-material/Search';
 import InventoryProductEditor from '../components/InventoryProductEditor';
 import { fetchAllProductsForAdmin, saveProduct, saveVariant } from '../data/adminCatalog';
 import { useCatalog } from '../context/CatalogContext';
@@ -67,6 +85,12 @@ export default function InventoryPage() {
     setNewProduct((prev) => ({ ...prev, [field]: value }));
   }
 
+  function closeAddForm() {
+    if (creating) return;
+    setShowAddForm(false);
+    setNewProduct(EMPTY_NEW_PRODUCT);
+  }
+
   async function handleCreateProduct(e: FormEvent) {
     e.preventDefault();
     if (!newProduct.title.trim()) return;
@@ -106,96 +130,168 @@ export default function InventoryPage() {
     }
   }
 
-  if (loading) return <div className="state-message">Loading inventory…</div>;
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
-    <div className="inventory-page">
-      <div className="inventory-page__header">
-        <h1>Inventory Management</h1>
-        <button type="button" onClick={() => setShowAddForm((v) => !v)}>
-          {showAddForm ? 'Cancel' : '+ Add product'}
-        </button>
-      </div>
+    <Box sx={{ maxWidth: 1080, mx: 'auto', px: { xs: 2, sm: 3 }, py: 4 }}>
+      <Stack
+        direction="row"
+        sx={{
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 2,
+          mb: 3,
+        }}
+      >
+        <Typography variant="h4" component="h1">
+          Inventory Management
+        </Typography>
+        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setShowAddForm(true)}>
+          Add product
+        </Button>
+      </Stack>
 
-      {error && <div className="state-message state-message--error">{error}</div>}
-
-      {showAddForm && (
-        <form className="inventory-add-form" onSubmit={handleCreateProduct}>
-          <input
-            value={newProduct.title}
-            onChange={(e) => updateNewProduct('title', e.target.value)}
-            placeholder="Product title"
-            required
-          />
-          <select value={newProduct.category} onChange={(e) => updateNewProduct('category', e.target.value)}>
-            {CATEGORY_OPTIONS.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-          <input
-            value={newProduct.image}
-            onChange={(e) => updateNewProduct('image', e.target.value)}
-            placeholder="Image URL"
-          />
-          <input
-            value={newProduct.sku}
-            onChange={(e) => updateNewProduct('sku', e.target.value)}
-            placeholder="SKU"
-          />
-          <input
-            type="number"
-            min={0}
-            value={newProduct.price}
-            onChange={(e) => updateNewProduct('price', e.target.value)}
-            placeholder="Price"
-            required
-          />
-          <input
-            type="number"
-            min={0}
-            value={newProduct.compareAtPrice}
-            onChange={(e) => updateNewProduct('compareAtPrice', e.target.value)}
-            placeholder="Compare-at price (optional)"
-          />
-          <input
-            type="number"
-            min={0}
-            value={newProduct.available}
-            onChange={(e) => updateNewProduct('available', e.target.value)}
-            placeholder="Stock"
-          />
-          <textarea
-            value={newProduct.description}
-            onChange={(e) => updateNewProduct('description', e.target.value)}
-            placeholder="Description"
-            rows={2}
-          />
-          <button type="submit" disabled={creating}>
-            {creating ? 'Creating…' : 'Create'}
-          </button>
-        </form>
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+          {error}
+        </Alert>
       )}
 
-      <input
-        className="search-input"
-        type="search"
+      <TextField
+        fullWidth
         placeholder="Search by product, category or SKU…"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
+        size="small"
+        sx={{ mb: 3 }}
+        slotProps={{
+          input: {
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon fontSize="small" />
+              </InputAdornment>
+            ),
+          },
+        }}
       />
 
-      <div className="inventory-product-list">
+      <Stack spacing={2}>
         {filtered.length === 0 ? (
-          <div className="state-message">No products found.</div>
+          <Typography color="text.secondary">No products found.</Typography>
         ) : (
           filtered.map((product) => (
             <InventoryProductEditor key={product.id} product={product} onChanged={handleChanged} />
           ))
         )}
-      </div>
-    </div>
+      </Stack>
+
+      <Dialog open={showAddForm} onClose={closeAddForm} fullWidth maxWidth="sm">
+        <DialogTitle>Add product</DialogTitle>
+        <Box component="form" onSubmit={handleCreateProduct}>
+          <DialogContent dividers>
+            <Grid container spacing={2}>
+              <Grid size={12}>
+                <TextField
+                  label="Title"
+                  value={newProduct.title}
+                  onChange={(e) => updateNewProduct('title', e.target.value)}
+                  required
+                  fullWidth
+                  autoFocus
+                />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <TextField
+                  select
+                  label="Category"
+                  value={newProduct.category}
+                  onChange={(e) => updateNewProduct('category', e.target.value)}
+                  fullWidth
+                >
+                  {CATEGORY_OPTIONS.map((c) => (
+                    <MenuItem key={c} value={c}>
+                      {c}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <TextField
+                  label="Image URL"
+                  value={newProduct.image}
+                  onChange={(e) => updateNewProduct('image', e.target.value)}
+                  fullWidth
+                />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <TextField
+                  label="SKU"
+                  value={newProduct.sku}
+                  onChange={(e) => updateNewProduct('sku', e.target.value)}
+                  fullWidth
+                />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <TextField
+                  label="Price"
+                  type="number"
+                  value={newProduct.price}
+                  onChange={(e) => updateNewProduct('price', e.target.value)}
+                  required
+                  fullWidth
+                  slotProps={{ htmlInput: { min: 0, step: '0.01' } }}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <TextField
+                  label="Compare-at price"
+                  type="number"
+                  value={newProduct.compareAtPrice}
+                  onChange={(e) => updateNewProduct('compareAtPrice', e.target.value)}
+                  fullWidth
+                  slotProps={{ htmlInput: { min: 0, step: '0.01' } }}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, sm: 6 }}>
+                <TextField
+                  label="Stock"
+                  type="number"
+                  value={newProduct.available}
+                  onChange={(e) => updateNewProduct('available', e.target.value)}
+                  fullWidth
+                  slotProps={{ htmlInput: { min: 0 } }}
+                />
+              </Grid>
+              <Grid size={12}>
+                <TextField
+                  label="Description"
+                  value={newProduct.description}
+                  onChange={(e) => updateNewProduct('description', e.target.value)}
+                  fullWidth
+                  multiline
+                  rows={3}
+                />
+              </Grid>
+            </Grid>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, py: 2 }}>
+            <Button onClick={closeAddForm} disabled={creating}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="contained" disabled={creating}>
+              {creating ? 'Creating…' : 'Create'}
+            </Button>
+          </DialogActions>
+        </Box>
+      </Dialog>
+    </Box>
   );
 }
 

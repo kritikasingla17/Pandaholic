@@ -1,4 +1,30 @@
 import { useState } from 'react';
+import {
+  Alert,
+  Avatar,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Collapse,
+  IconButton,
+  MenuItem,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Tooltip,
+  Typography,
+} from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ImageNotSupportedIcon from '@mui/icons-material/ImageNotSupported';
+import SaveIcon from '@mui/icons-material/Save';
 import type { Product, ProductVariant } from '../types';
 import { deleteProduct, deleteVariant, saveProduct, saveVariant } from '../data/adminCatalog';
 import { formatOptionsText, parseOptionsText } from '../utils/format';
@@ -90,75 +116,129 @@ export default function InventoryProductEditor({ product, onChanged }: EditorPro
   }
 
   return (
-    <div className="inventory-product">
-      <div className="inventory-product__header">
-        {product.image ? (
-          <img src={product.image} alt="" className="inventory-product__thumb" />
-        ) : (
-          <div className="inventory-product__thumb inventory-product__thumb--empty" />
-        )}
-        <div className="inventory-product__fields">
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" />
-          <select value={category} onChange={(e) => setCategory(e.target.value)}>
-            {categoryOptions.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-          <select value={status} onChange={(e) => setStatus(e.target.value)}>
-            <option value="active">Active</option>
-            <option value="draft">Draft</option>
-          </select>
-        </div>
-        <div className="inventory-product__actions">
-          <button onClick={handleSaveProduct} disabled={saving}>
-            Save
-          </button>
-          <button onClick={handleDeleteProduct} disabled={saving} className="danger">
-            Delete
-          </button>
-          <button onClick={() => setExpanded((v) => !v)} type="button">
-            {expanded ? 'Hide details' : 'More'}
-          </button>
-        </div>
-      </div>
-
-      {expanded && (
-        <div className="inventory-product__details">
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Description"
-            rows={3}
+    <Card variant="outlined">
+      <CardContent>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={2}
+          sx={{ alignItems: { xs: 'stretch', sm: 'center' } }}
+        >
+          {image ? (
+            <Avatar variant="rounded" src={image} sx={{ width: 56, height: 56 }} />
+          ) : (
+            <Avatar variant="rounded" sx={{ width: 56, height: 56, bgcolor: 'action.hover' }}>
+              <ImageNotSupportedIcon color="disabled" fontSize="small" />
+            </Avatar>
+          )}
+          <TextField
+            label="Title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            size="small"
+            fullWidth
           />
-          <input value={image} onChange={(e) => setImage(e.target.value)} placeholder="Image URL" />
-        </div>
-      )}
+          <TextField
+            select
+            label="Category"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            size="small"
+            sx={{ minWidth: 180 }}
+          >
+            {categoryOptions.map((c) => (
+              <MenuItem key={c} value={c}>
+                {c}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            label="Status"
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+            size="small"
+            sx={{ minWidth: 130 }}
+          >
+            <MenuItem value="active">Active</MenuItem>
+            <MenuItem value="draft">Draft</MenuItem>
+          </TextField>
+          <Stack direction="row" spacing={0.5}>
+            <Tooltip title="Save product">
+              <span>
+                <IconButton color="primary" onClick={handleSaveProduct} disabled={saving}>
+                  <SaveIcon />
+                </IconButton>
+              </span>
+            </Tooltip>
+            <Tooltip title="Delete product">
+              <span>
+                <IconButton color="error" onClick={handleDeleteProduct} disabled={saving}>
+                  <DeleteIcon />
+                </IconButton>
+              </span>
+            </Tooltip>
+            <Tooltip title={expanded ? 'Hide details' : 'More details'}>
+              <IconButton
+                onClick={() => setExpanded((v) => !v)}
+                sx={{ transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}
+              >
+                <ExpandMoreIcon />
+              </IconButton>
+            </Tooltip>
+          </Stack>
+        </Stack>
 
-      {error && <p className="inventory-product__error">{error}</p>}
+        <Collapse in={expanded}>
+          <Stack spacing={2} sx={{ mt: 2 }}>
+            <TextField
+              label="Description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              multiline
+              rows={3}
+              fullWidth
+              size="small"
+            />
+            <TextField
+              label="Image URL"
+              value={image}
+              onChange={(e) => setImage(e.target.value)}
+              fullWidth
+              size="small"
+            />
+          </Stack>
+        </Collapse>
 
-      <table className="inventory-table">
-        <thead>
-          <tr>
-            <th>Options</th>
-            <th>SKU</th>
-            <th>Price</th>
-            <th>Compare at</th>
-            <th>Stock</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {product.variants.map((variant) => (
-            <VariantRow key={variant.id} productId={product.id} variant={variant} onChanged={onChanged} />
-          ))}
-        </tbody>
-      </table>
-      <button onClick={handleAddVariant} disabled={saving} className="inventory-product__add-variant" type="button">
-        + Add variant
-      </button>
-    </div>
+        {error && (
+          <Alert severity="error" sx={{ mt: 2 }} onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        )}
+
+        <TableContainer sx={{ mt: 2 }}>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Options</TableCell>
+                <TableCell>SKU</TableCell>
+                <TableCell>Price</TableCell>
+                <TableCell>Compare at</TableCell>
+                <TableCell>Stock</TableCell>
+                <TableCell align="right"></TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {product.variants.map((variant) => (
+                <VariantRow key={variant.id} productId={product.id} variant={variant} onChanged={onChanged} />
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        <Button startIcon={<AddIcon />} onClick={handleAddVariant} disabled={saving} sx={{ mt: 1 }} size="small">
+          Add variant
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -217,51 +297,83 @@ function VariantRow({
   }
 
   return (
-    <tr>
-      <td>
-        <input value={optionsText} onChange={(e) => setOptionsText(e.target.value)} placeholder="Name: Value" />
-      </td>
-      <td>
-        <input value={sku} onChange={(e) => setSku(e.target.value)} placeholder="SKU" />
-      </td>
-      <td>
-        <input
+    <TableRow>
+      <TableCell sx={{ minWidth: 160 }}>
+        <TextField
+          value={optionsText}
+          onChange={(e) => setOptionsText(e.target.value)}
+          placeholder="Name: Value"
+          size="small"
+          fullWidth
+          variant="standard"
+        />
+      </TableCell>
+      <TableCell sx={{ minWidth: 110 }}>
+        <TextField
+          value={sku}
+          onChange={(e) => setSku(e.target.value)}
+          placeholder="SKU"
+          size="small"
+          fullWidth
+          variant="standard"
+        />
+      </TableCell>
+      <TableCell sx={{ width: 100 }}>
+        <TextField
           type="number"
-          min={0}
           value={price}
           onChange={(e) => setPrice(Number(e.target.value))}
-          className="stock-input"
+          size="small"
+          fullWidth
+          variant="standard"
+          slotProps={{ htmlInput: { min: 0 } }}
         />
-      </td>
-      <td>
-        <input
+      </TableCell>
+      <TableCell sx={{ width: 110 }}>
+        <TextField
           type="number"
-          min={0}
           value={compareAt}
           onChange={(e) => setCompareAt(e.target.value === '' ? '' : Number(e.target.value))}
-          className="stock-input"
+          size="small"
+          fullWidth
+          variant="standard"
+          slotProps={{ htmlInput: { min: 0 } }}
         />
-      </td>
-      <td>
-        <input
+      </TableCell>
+      <TableCell sx={{ width: 90 }}>
+        <TextField
           type="number"
-          min={0}
           value={available}
           onChange={(e) => setAvailable(Number(e.target.value))}
-          className="stock-input"
+          size="small"
+          fullWidth
+          variant="standard"
+          slotProps={{ htmlInput: { min: 0 } }}
         />
-      </td>
-      <td>
-        <div className="inventory-product__actions">
-          <button onClick={handleSave} disabled={saving}>
-            Save
-          </button>
-          <button onClick={handleDelete} disabled={saving} className="danger">
-            Delete
-          </button>
-        </div>
-        {error && <p className="inventory-product__error">{error}</p>}
-      </td>
-    </tr>
+      </TableCell>
+      <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+        <Box>
+          <Tooltip title="Save variant">
+            <span>
+              <IconButton color="primary" size="small" onClick={handleSave} disabled={saving}>
+                <SaveIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
+          <Tooltip title="Delete variant">
+            <span>
+              <IconButton color="error" size="small" onClick={handleDelete} disabled={saving}>
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
+        </Box>
+        {error && (
+          <Typography variant="caption" color="error" sx={{ display: 'block' }}>
+            {error}
+          </Typography>
+        )}
+      </TableCell>
+    </TableRow>
   );
 }
