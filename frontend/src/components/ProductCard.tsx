@@ -24,6 +24,9 @@ export default function ProductCard({ product, onSelect }: ProductCardProps) {
           <div className="product-card__placeholder">No image</div>
         )}
         {outOfStock && <span className="badge badge--out">Out of stock</span>}
+        {!outOfStock && product.personalizable && (
+          <span className="badge badge--personalized">✨ Personalize it</span>
+        )}
       </div>
       <div className="product-card__body">
         <span className="product-card__category">{product.category}</span>

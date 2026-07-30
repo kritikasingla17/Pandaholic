@@ -2,6 +2,12 @@ import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCatalog } from '../context/CatalogContext';
 
+const VALUE_PROPS = [
+  { icon: '🎨', title: 'Handmade with love', text: 'Every piece is crafted by hand, not mass produced.' },
+  { icon: '💌', title: '100% personalized', text: 'Add names, photos or messages to make it truly yours.' },
+  { icon: '📦', title: 'Delivered to your door', text: 'Carefully packed and shipped straight to you.' },
+];
+
 export default function CategoriesPage() {
   const { products, categories, loading, error } = useCatalog();
   const navigate = useNavigate();
@@ -17,6 +23,17 @@ export default function CategoriesPage() {
     });
   }, [categories, products]);
 
+  // A handful of real product photos for the hero collage - keeps the
+  // landing page visually rich without relying on external stock images.
+  const collageImages = useMemo(
+    () =>
+      products
+        .filter((p) => p.image)
+        .slice(0, 4)
+        .map((p) => ({ src: p.image, alt: p.title })),
+    [products]
+  );
+
   if (loading) {
     return <div className="state-message">Loading catalog…</div>;
   }
@@ -27,9 +44,46 @@ export default function CategoriesPage() {
 
   return (
     <div className="catalog-page">
-      <div className="catalog-hero">
-        <h1>Handmade, made just for you</h1>
-        <p>Browse by category — every piece customisable, made just for you.</p>
+      <section className="hero-banner">
+        <div className="hero-banner__content">
+          <span className="hero-banner__eyebrow">Handmade • Personalized • Made just for you</span>
+          <h1>Turn your ideas into handmade keepsakes</h1>
+          <p>
+            From custom posters and photo cards to keepsake calendars — browse our categories and
+            personalize a piece that's made just for you.
+          </p>
+          <a href="#categories" className="btn btn--primary hero-banner__cta">
+            Shop the collection ↓
+          </a>
+        </div>
+        {collageImages.length > 0 && (
+          <div className="hero-collage" aria-hidden="true">
+            {collageImages.map((img, i) => (
+              <div className={`hero-collage__item hero-collage__item--${i}`} key={img.src + i}>
+                <img src={img.src} alt={img.alt} loading="eager" decoding="async" />
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <div className="value-props">
+        {VALUE_PROPS.map((prop) => (
+          <div className="value-prop" key={prop.title}>
+            <span className="value-prop__icon" aria-hidden="true">
+              {prop.icon}
+            </span>
+            <div>
+              <strong>{prop.title}</strong>
+              <p>{prop.text}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="catalog-hero" id="categories">
+        <h2>Shop by category</h2>
+        <p>Every piece customisable, made just for you.</p>
       </div>
 
       {tiles.length === 0 ? (
@@ -44,7 +98,7 @@ export default function CategoriesPage() {
             >
               <div className="category-tile__image">
                 {tile.image ? (
-                  <img src={tile.image} alt={tile.category} />
+                  <img src={tile.image} alt={tile.category} loading="lazy" decoding="async" />
                 ) : (
                   <div className="product-card__placeholder">No image</div>
                 )}
@@ -62,3 +116,4 @@ export default function CategoriesPage() {
     </div>
   );
 }
+

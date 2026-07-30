@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { CatalogProvider } from './context/CatalogContext';
 import { StoreProvider } from './context/StoreContext';
 import Header from './components/Header';
+import Footer from './components/Footer';
 import CategoriesPage from './pages/CategoriesPage';
 import CategoryProductsPage from './pages/CategoryProductsPage';
 import CartPage from './pages/CartPage';
@@ -39,6 +40,7 @@ export default function App() {
               <Route path="/contact" element={<ContactPage />} />
             </Routes>
           </main>
+          <Footer />
         </BrowserRouter>
       </StoreProvider>
     </CatalogProvider>
