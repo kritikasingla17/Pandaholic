@@ -1,0 +1,9 @@
+[build]
+  base = "frontend"
+  command = "npm run build"
+  publish = "dist"
+
+# SPA fallback for react-router-dom's BrowserRouter lives in
+# frontend/public/_redirects (portable to Cloudflare Pages too) rather than
+# here, so this file only holds Netlify-specific build settings - deleting it
+# to move hosts doesn't affect routing behavior.
