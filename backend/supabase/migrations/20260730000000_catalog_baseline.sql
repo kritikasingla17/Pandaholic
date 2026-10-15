@@ -1,5 +1,6 @@
--- Pandaholic catalog schema for Supabase (Postgres)
--- Run this once in the Supabase SQL editor (Project -> SQL Editor -> New query).
+-- Pandaholic catalog schema for Supabase (Postgres) - baseline migration.
+-- Migrations run in filename order (`supabase db push`, or paste each new file
+-- into the Supabase SQL editor).
 
 create extension if not exists pgcrypto;
 
@@ -34,10 +35,9 @@ create index if not exists product_variants_product_id_idx on product_variants (
 
 -- Row Level Security -------------------------------------------------------
 -- The app's anon key is public (shipped to every browser), so writes are NOT
--- allowed directly on these tables. Reads are public because the catalog is
--- public. Stock changes go through the set_variant_stock() function below,
--- which only lets a caller change the `available` count on one variant -
--- nothing else (price, title, etc. stay protected).
+-- allowed directly on these tables; every write goes through the SECURITY
+-- DEFINER functions below. 20261009000000_staff_access.sql narrows reads to
+-- active products for everyone except staff.
 alter table products enable row level security;
 alter table product_variants enable row level security;
 
@@ -70,19 +70,12 @@ $$;
 
 grant execute on function public.set_variant_stock(uuid, integer) to anon, authenticated;
 
--- NOTE: because this app has no admin login yet, anyone with the site open
--- can call set_variant_stock() and change stock counts. That's an accepted
--- trade-off for now, but before going live you should gate the Inventory
--- page behind Supabase Auth and restrict this function to authenticated
--- "staff" users (e.g. check auth.uid() against a staff table).
+-- Checkout calls set_variant_stock() as anon; 20261009000000_staff_access.sql
+-- limits it to lowering stock.
 
--- Admin CRUD RPCs (Inventory page) -----------------------------------------
--- The Inventory page manages full product/variant records directly, not
--- just stock counts. As with set_variant_stock() above, these functions are
--- granted to `anon` because there's no auth yet - anyone who opens
--- /inventory can create, edit, or delete any product/variant. Same accepted
--- trade-off, same recommendation: add Supabase Auth + a staff check before
--- going live, then tighten these grants to `authenticated` only.
+-- Admin CRUD RPCs ------------------------------------------------------------
+-- Granted to `anon` here because there was no login yet;
+-- 20261009000000_staff_access.sql makes them staff-only.
 
 create or replace function public.admin_upsert_product(
   p_product_id uuid,

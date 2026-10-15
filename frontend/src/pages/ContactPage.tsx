@@ -1,4 +1,8 @@
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
+
 export default function ContactPage() {
+  useDocumentTitle('Contact');
+
   return (
     <div className="contact-page">
       <section className="contact-hero">

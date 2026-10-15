@@ -6,7 +6,10 @@
   "scripts": {
     "import:catalog": "node database/import-catalog.mjs",
     "migrate:images": "node database/migrate-images-to-storage.mjs",
-    "optimize:images": "node database/optimize-storage-images.mjs"
+    "optimize:images": "node database/optimize-storage-images.mjs",
+    "staff:add": "node database/manage-staff.mjs add",
+    "staff:remove": "node database/manage-staff.mjs remove",
+    "staff:list": "node database/manage-staff.mjs list"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.111.0",

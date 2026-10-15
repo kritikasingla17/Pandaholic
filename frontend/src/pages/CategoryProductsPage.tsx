@@ -3,14 +3,17 @@ import { Link, useParams } from 'react-router-dom';
 import { useCatalog } from '../context/CatalogContext';
 import ProductCard from '../components/ProductCard';
 import ProductModal from '../components/ProductModal';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import type { Product } from '../types';
 
 export default function CategoryProductsPage() {
   const { categoryName } = useParams<{ categoryName: string }>();
-  const category = decodeURIComponent(categoryName ?? '');
+  // React Router already decodes params; decoding again breaks names containing "%".
+  const category = categoryName ?? '';
   const { products, categories, loading, error } = useCatalog();
   const [search, setSearch] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  useDocumentTitle(category || undefined);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -22,7 +25,22 @@ export default function CategoryProductsPage() {
   }, [products, category, search]);
 
   if (loading) {
-    return <div className="state-message">Loading catalog…</div>;
+    return (
+      <div className="catalog-page">
+        <div className="product-grid">
+          {Array.from({ length: 8 }, (_, i) => (
+            <div className="skeleton-card" key={i}>
+              <div className="skeleton-card__image skeleton-card__image--square" />
+              <div className="skeleton-card__body">
+                <div className="skeleton-line skeleton-line--short" />
+                <div className="skeleton-line skeleton-line--title" />
+                <div className="skeleton-line skeleton-line--short" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   if (error) {

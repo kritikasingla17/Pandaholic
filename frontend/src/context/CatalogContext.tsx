@@ -8,9 +8,13 @@ interface CatalogContextValue {
   categories: string[];
   loading: boolean;
   error: string | null;
-  updateVariantAvailable: (variantId: string, available: number) => void;
   refresh: () => Promise<void>;
 }
+
+// The main storefront categories always lead the list, in this order; other
+// categories follow alphabetically, with the catch-all "Other" last.
+const FEATURED_CATEGORY_ORDER = ["Valentine's Special", 'DIY', '2026 Calendars', 'Polaroids'];
+const LAST_CATEGORY = 'Other';
 
 const CatalogContext = createContext<CatalogContextValue | undefined>(undefined);
 
@@ -46,33 +50,19 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const updateVariantAvailable = useCallback((variantId: string, available: number) => {
-    setProducts((prev) =>
-      prev.map((product) => {
-        if (!product.variants.some((v) => v.id === variantId)) return product;
-        const variants = product.variants.map((v) => (v.id === variantId ? { ...v, available } : v));
-        return { ...product, variants, totalAvailable: variants.reduce((sum, v) => sum + v.available, 0) };
-      })
-    );
-  }, []);
-
-  // The 4 main storefront categories always lead the list, in this order;
-  // any other category (not part of the curated 4 yet) follows alphabetically.
-  const FEATURED_CATEGORY_ORDER = ["Valentine's Special", 'DIY', '2026 Calendars', 'Polaroids'];
-
   const categories = useMemo(() => {
     const set = new Set<string>();
     products.forEach((p) => set.add(p.category));
     const featured = FEATURED_CATEGORY_ORDER.filter((c) => set.has(c));
     const rest = Array.from(set)
       .filter((c) => !FEATURED_CATEGORY_ORDER.includes(c))
-      .sort((a, b) => a.localeCompare(b));
+      .sort((a, b) => Number(a === LAST_CATEGORY) - Number(b === LAST_CATEGORY) || a.localeCompare(b));
     return [...featured, ...rest];
   }, [products]);
 
   const value = useMemo(
-    () => ({ products, categories, loading, error, updateVariantAvailable, refresh }),
-    [products, categories, loading, error, updateVariantAvailable, refresh]
+    () => ({ products, categories, loading, error, refresh }),
+    [products, categories, loading, error, refresh]
   );
 
   return <CatalogContext.Provider value={value}>{children}</CatalogContext.Provider>;

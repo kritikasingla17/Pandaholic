@@ -3,10 +3,9 @@
 // storefront no longer depends on a third-party host for images.
 //
 // Creates the `product-images` bucket automatically if it doesn't exist yet.
-// You still need to run database/storage-setup.sql once in the Supabase SQL
-// editor before admins can upload new images from the Inventory page in the
-// browser (that adds the RLS policies the public anon key needs) - this
-// script itself uses the service role key, which bypasses RLS.
+// Its access rules and upload limits come from the migrations in
+// supabase/migrations - this script uses the service role key, which bypasses
+// RLS (but not the bucket's file size / type limits).
 //
 // Usage (from the backend folder):
 //   npm run migrate:images
@@ -104,7 +103,12 @@ async function main() {
   const { data: bucket, error: bucketError } = await supabase.storage.getBucket(BUCKET);
   if (bucketError || !bucket) {
     console.log(`Bucket "${BUCKET}" not found, creating it...`);
-    const { error: createError } = await supabase.storage.createBucket(BUCKET, { public: true });
+    const { error: createError } = await supabase.storage.createBucket(BUCKET, {
+      public: true,
+      // Same limits as supabase/migrations/20261009000000_staff_access.sql.
+      fileSizeLimit: 10 * 1024 * 1024,
+      allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'],
+    });
     if (createError) {
       console.error(`Failed to create bucket "${BUCKET}": ${createError.message}`);
       process.exit(1);

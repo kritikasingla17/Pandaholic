@@ -1,13 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
+import { missingSupabaseEnvVars, SUPABASE_ANON_KEY, SUPABASE_URL } from './config';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error(
-    'Missing Supabase env vars. Copy .env.local.example to .env.local and fill in ' +
-      'VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY from your Supabase project settings.'
-  );
+// main.tsx shows a setup page instead of loading the app when these are missing.
+if (missingSupabaseEnvVars.length > 0) {
+  throw new Error(`Missing Supabase settings: ${missingSupabaseEnvVars.join(', ')}`);
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);

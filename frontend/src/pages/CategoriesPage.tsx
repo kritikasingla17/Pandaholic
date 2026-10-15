@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
+import type { MouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCatalog } from '../context/CatalogContext';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 
 const VALUE_PROPS = [
   { icon: '🎨', title: 'Handmade with love', text: 'Every piece is crafted by hand, not mass produced.' },
@@ -8,9 +10,18 @@ const VALUE_PROPS = [
   { icon: '📦', title: 'Delivered to your door', text: 'Carefully packed and shipped straight to you.' },
 ];
 
+function scrollToCategories(e: MouseEvent<HTMLAnchorElement>) {
+  const target = document.getElementById('categories');
+  if (!target) return;
+  e.preventDefault();
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  target.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth' });
+}
+
 export default function CategoriesPage() {
   const { products, categories, loading, error } = useCatalog();
   const navigate = useNavigate();
+  useDocumentTitle();
 
   const tiles = useMemo(() => {
     return categories.map((category) => {
@@ -23,19 +34,32 @@ export default function CategoriesPage() {
     });
   }, [categories, products]);
 
-  // A handful of real product photos for the hero collage - keeps the
-  // landing page visually rich without relying on external stock images.
-  const collageImages = useMemo(
-    () =>
-      products
-        .filter((p) => p.image)
-        .slice(0, 4)
-        .map((p) => ({ src: p.image, alt: p.title })),
-    [products]
-  );
+  // Products marked "featured" in the admin lead the hero collage; other
+  // in-stock products with photos fill any remaining spots.
+  const collageImages = useMemo(() => {
+    const candidates = products.filter((p) => p.image && p.totalAvailable > 0);
+    return [...candidates.filter((p) => p.featured), ...candidates.filter((p) => !p.featured)]
+      .slice(0, 4)
+      .map((p) => ({ src: p.image, alt: p.title }));
+  }, [products]);
 
   if (loading) {
-    return <div className="state-message">Loading catalog…</div>;
+    return (
+      <div className="catalog-page">
+        <div className="skeleton-hero" />
+        <div className="category-grid">
+          {Array.from({ length: 6 }, (_, i) => (
+            <div className="skeleton-card" key={i}>
+              <div className="skeleton-card__image" />
+              <div className="skeleton-card__body">
+                <div className="skeleton-line skeleton-line--title" />
+                <div className="skeleton-line skeleton-line--short" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   if (error) {
@@ -52,7 +76,7 @@ export default function CategoriesPage() {
             From custom posters and photo cards to keepsake calendars — browse our categories and
             personalize a piece that's made just for you.
           </p>
-          <a href="#categories" className="btn btn--primary hero-banner__cta">
+          <a href="#categories" className="btn btn--primary hero-banner__cta" onClick={scrollToCategories}>
             Shop the collection ↓
           </a>
         </div>

@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient';
+import { fetchAllPages } from '../lib/fetchAllPages';
 import type { Product, ProductVariant, VariantOption } from '../types';
 
 export interface ProductRow {
@@ -12,6 +13,7 @@ export interface ProductRow {
   images: string[] | null;
   option_names: string[] | null;
   personalizable: boolean | null;
+  featured: boolean | null;
   status: string | null;
 }
 
@@ -24,9 +26,15 @@ export interface VariantRow {
   compare_at_price: number | string | null;
   available: number | null;
   image: string | null;
+  position: number | null;
 }
 
-export function mapRowsToProducts(productRows: ProductRow[], variantRows: VariantRow[]): Product[] {
+export type ProductWithVariantsRow = ProductRow & { product_variants: VariantRow[] | null };
+
+// Products with their variants in one round trip (PostgREST embedded resource).
+export const PRODUCT_WITH_VARIANTS_SELECT = '*, product_variants(*)';
+
+function mapRowsToProducts(productRows: ProductRow[], variantRows: VariantRow[]): Product[] {
   const variantsByProduct = new Map<string, VariantRow[]>();
   for (const row of variantRows) {
     const existing = variantsByProduct.get(row.product_id);
@@ -35,15 +43,18 @@ export function mapRowsToProducts(productRows: ProductRow[], variantRows: Varian
   }
 
   const products: Product[] = productRows.map((row) => {
-    const variants: ProductVariant[] = (variantsByProduct.get(row.id) ?? []).map((v) => ({
-      id: v.id,
-      sku: v.sku ?? '',
-      options: v.options ?? [],
-      price: Number(v.price) || 0,
-      compareAtPrice: v.compare_at_price != null ? Number(v.compare_at_price) : null,
-      available: v.available ?? 0,
-      image: v.image ?? null,
-    }));
+    const variants: ProductVariant[] = (variantsByProduct.get(row.id) ?? [])
+      .slice()
+      .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+      .map((v) => ({
+        id: v.id,
+        sku: v.sku ?? '',
+        options: v.options ?? [],
+        price: Number(v.price) || 0,
+        compareAtPrice: v.compare_at_price != null ? Number(v.compare_at_price) : null,
+        available: v.available ?? 0,
+        image: v.image ?? null,
+      }));
 
     const prices = variants.map((v) => v.price).filter((p) => p > 0);
 
@@ -62,6 +73,7 @@ export function mapRowsToProducts(productRows: ProductRow[], variantRows: Varian
       maxPrice: prices.length ? Math.max(...prices) : 0,
       totalAvailable: variants.reduce((sum, v) => sum + v.available, 0),
       personalizable: row.personalizable ?? true,
+      featured: row.featured ?? false,
       status: row.status ?? 'active',
     };
   });
@@ -70,18 +82,22 @@ export function mapRowsToProducts(productRows: ProductRow[], variantRows: Varian
   return products;
 }
 
+export function mapProductWithVariantsRows(rows: ProductWithVariantsRow[]): Product[] {
+  return mapRowsToProducts(rows, rows.flatMap((row) => row.product_variants ?? []));
+}
+
 export async function loadCatalog(): Promise<Product[]> {
-  // Fetch products and their variants in a single round trip using
-  // PostgREST's embedded-resource syntax (based on the product_variants ->
-  // products foreign key), instead of two separate queries.
-  const { data, error } = await supabase
-    .from('products')
-    .select('*, product_variants(*)')
-    .eq('status', 'active');
-
-  if (error) throw new Error(`Failed to load products: ${error.message}`);
-
-  const productRows = (data ?? []) as (ProductRow & { product_variants: VariantRow[] })[];
-  const variantRows = productRows.flatMap((row) => row.product_variants ?? []);
-  return mapRowsToProducts(productRows, variantRows);
+  try {
+    const rows = await fetchAllPages<ProductWithVariantsRow>((from, to) =>
+      supabase
+        .from('products')
+        .select(PRODUCT_WITH_VARIANTS_SELECT, { count: 'exact' })
+        .eq('status', 'active')
+        .order('id')
+        .range(from, to)
+    );
+    return mapProductWithVariantsRows(rows);
+  } catch (err: unknown) {
+    throw new Error(`Failed to load products: ${err instanceof Error ? err.message : String(err)}`);
+  }
 }

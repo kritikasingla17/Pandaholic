@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { Product } from '../types';
 import { useStore } from '../context/StoreContext';
 import { formatCurrency } from '../utils/format';
@@ -7,7 +8,7 @@ interface ProductCardProps {
   onSelect: (product: Product) => void;
 }
 
-export default function ProductCard({ product, onSelect }: ProductCardProps) {
+export default memo(function ProductCard({ product, onSelect }: ProductCardProps) {
   const { getAvailable } = useStore();
   const totalAvailable = product.variants.reduce(
     (sum, v) => sum + getAvailable(v.id, v.available),
@@ -39,4 +40,5 @@ export default function ProductCard({ product, onSelect }: ProductCardProps) {
       </div>
     </button>
   );
-}
+});
+

@@ -1,29 +1,22 @@
-import type { VariantOption } from '../types';
+// Both bounds are set explicitly: older browsers throw a RangeError when only
+// maximumFractionDigits is lowered below INR's default of 2.
+const rupeesFormat = new Intl.NumberFormat('en-IN', {
+  style: 'currency',
+  currency: 'INR',
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
+});
+const rupeesAndPaiseFormat = new Intl.NumberFormat('en-IN', {
+  style: 'currency',
+  currency: 'INR',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
 
+// Whole amounts show as "₹29"; amounts with paise keep them ("₹29.50") instead of being rounded away.
 export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
-
-// Lightweight text <-> VariantOption[] conversion for the Inventory admin
-// UI, e.g. "Size: Large, Color: Red" <-> [{name:'Size',value:'Large'},...]
-export function formatOptionsText(options: VariantOption[]): string {
-  return options.map((o) => `${o.name}: ${o.value}`).join(', ');
-}
-
-export function parseOptionsText(text: string): VariantOption[] {
-  return text
-    .split(',')
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .map((part) => {
-      const [name, ...rest] = part.split(':');
-      return { name: (name ?? '').trim(), value: rest.join(':').trim() };
-    })
-    .filter((o) => o.name && o.value);
+  const paise = Math.round(amount * 100);
+  return paise % 100 === 0 ? rupeesFormat.format(paise / 100) : rupeesAndPaiseFormat.format(paise / 100);
 }
 
 // Product descriptions (imported from the Shopify CSV) are often a single

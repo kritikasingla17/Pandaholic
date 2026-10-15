@@ -1,18 +1,35 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { CartItem, Order, Personalization, ProductVariant } from '../types';
+import type { CartItem, CheckoutCustomer, Personalization, ProductVariant } from '../types';
 import { useCatalog } from './CatalogContext';
-import { supabase } from '../lib/supabaseClient';
+import { rememberOrder, submitOrder, type PlacedOrder } from '../data/orders';
 import { readJson, writeJson } from '../utils/storage';
+import { uuidV4 } from '../utils/id';
 
 const CART_KEY = 'pandaholic_cart';
-const ORDERS_KEY = 'pandaholic_orders';
 
-function newId(): string {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return crypto.randomUUID();
-  }
-  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+// Validate cart items loaded from localStorage so corrupt data doesn't crash the app.
+function isValidCartItem(item: unknown): item is CartItem {
+  if (!item || typeof item !== 'object') return false;
+  const obj = item as Record<string, unknown>;
+  return (
+    typeof obj.id === 'string' &&
+    typeof obj.productHandle === 'string' &&
+    typeof obj.productTitle === 'string' &&
+    typeof obj.variantId === 'string' &&
+    typeof obj.unitPrice === 'number' &&
+    typeof obj.quantity === 'number' &&
+    obj.quantity > 0 &&
+    Array.isArray(obj.variantOptions) &&
+    obj.personalization !== null &&
+    typeof obj.personalization === 'object'
+  );
+}
+
+function loadCart(): CartItem[] {
+  const raw = readJson<unknown>(CART_KEY, []);
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(isValidCartItem);
 }
 
 interface AddToCartInput {
@@ -26,28 +43,24 @@ interface AddToCartInput {
 
 interface StoreContextValue {
   getAvailable: (variantId: string, baseAvailable: number) => number;
-  adjustStock: (variantId: string, delta: number) => Promise<boolean>;
-  setStock: (variantId: string, qty: number) => Promise<boolean>;
+  // The variant as currently in the catalog (live price and stock), if it's still for sale.
+  findVariant: (variantId: string) => ProductVariant | undefined;
   cart: CartItem[];
   addToCart: (input: AddToCartInput) => void;
   removeFromCart: (cartItemId: string) => void;
   updateCartQuantity: (cartItemId: string, quantity: number) => void;
-  clearCart: () => void;
   cartTotal: number;
   cartCount: number;
-  orders: Order[];
-  placeOrder: (customer: Order['customer']) => Promise<Order | null>;
+  placeOrder: (checkoutId: string, customer: CheckoutCustomer) => Promise<PlacedOrder>;
 }
 
 const StoreContext = createContext<StoreContextValue | undefined>(undefined);
 
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const { products, updateVariantAvailable } = useCatalog();
-  const [cart, setCart] = useState<CartItem[]>(() => readJson(CART_KEY, []));
-  const [orders, setOrders] = useState<Order[]>(() => readJson(ORDERS_KEY, []));
+  const { products, refresh: refreshCatalog } = useCatalog();
+  const [cart, setCart] = useState<CartItem[]>(loadCart);
 
   useEffect(() => writeJson(CART_KEY, cart), [cart]);
-  useEffect(() => writeJson(ORDERS_KEY, orders), [orders]);
 
   const variantByIdMap = useMemo(() => {
     const map = new Map<string, ProductVariant>();
@@ -62,23 +75,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return baseAvailable;
   }
 
-  async function setStock(variantId: string, qty: number): Promise<boolean> {
-    const target = Math.max(0, qty);
-    const { data, error } = await supabase.rpc('set_variant_stock', {
-      p_variant_id: variantId,
-      p_available: target,
-    });
-    if (error) {
-      console.error('Failed to update stock:', error.message);
-      return false;
-    }
-    updateVariantAvailable(variantId, typeof data === 'number' ? data : target);
-    return true;
-  }
-
-  async function adjustStock(variantId: string, delta: number): Promise<boolean> {
-    const current = variantByIdMap.get(variantId)?.available ?? 0;
-    return setStock(variantId, current + delta);
+  function findVariant(variantId: string): ProductVariant | undefined {
+    return variantByIdMap.get(variantId);
   }
 
   function addToCart(input: AddToCartInput) {
@@ -94,7 +92,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         );
       }
       const newItem: CartItem = {
-        id: newId(),
+        id: uuidV4(),
         productHandle: input.productHandle,
         productTitle: input.productTitle,
         image: input.image,
@@ -118,66 +116,33 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     );
   }
 
-  function clearCart() {
-    setCart([]);
-  }
-
-  const cartTotal = cart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
+  // Prices come from the live catalog (the order is charged at those prices), falling back to the price when added.
+  const cartTotal = cart.reduce(
+    (sum, item) => sum + (variantByIdMap.get(item.variantId)?.price ?? item.unitPrice) * item.quantity,
+    0
+  );
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  async function placeOrder(customer: Order['customer']): Promise<Order | null> {
-    if (cart.length === 0) return null;
-
-    // A variant can appear in multiple cart lines (different personalization),
-    // so aggregate the total quantity requested per variant before checking
-    // and decrementing stock.
-    const requestedByVariant = new Map<string, number>();
-    for (const item of cart) {
-      requestedByVariant.set(item.variantId, (requestedByVariant.get(item.variantId) ?? 0) + item.quantity);
-    }
-
-    for (const [variantId, requested] of requestedByVariant) {
-      const available = variantByIdMap.get(variantId)?.available ?? 0;
-      if (requested > available) {
-        return null;
-      }
-    }
-
-    const decrements = await Promise.all(
-      Array.from(requestedByVariant.entries()).map(([variantId, requested]) =>
-        adjustStock(variantId, -requested)
-      )
-    );
-    if (decrements.some((ok) => !ok)) {
-      return null;
-    }
-
-    const order: Order = {
-      id: newId(),
-      createdAt: new Date().toISOString(),
-      customer,
-      items: cart,
-      total: cartTotal,
-      status: 'placed',
-    };
-
-    setOrders((prev) => [order, ...prev]);
+  async function placeOrder(checkoutId: string, customer: CheckoutCustomer): Promise<PlacedOrder> {
+    if (cart.length === 0) throw new Error('Your cart is empty.');
+    const order = await submitOrder(checkoutId, customer, cart);
+    // Free the cart's storage (it can hold photos) before saving the order link, so a full quota can't drop it.
+    writeJson(CART_KEY, []);
     setCart([]);
+    rememberOrder(order);
+    void refreshCatalog();
     return order;
   }
 
   const value: StoreContextValue = {
     getAvailable,
-    adjustStock,
-    setStock,
+    findVariant,
     cart,
     addToCart,
     removeFromCart,
     updateCartQuantity,
-    clearCart,
     cartTotal,
     cartCount,
-    orders,
     placeOrder,
   };
 

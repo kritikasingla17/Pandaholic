@@ -15,3 +15,11 @@ export function writeJson<T>(key: string, value: T): void {
     // ignore quota / privacy-mode errors
   }
 }
+
+export function removeKey(key: string): void {
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    // ignore privacy-mode errors
+  }
+}

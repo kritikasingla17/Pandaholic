@@ -1,5 +1,4 @@
-// Baseline category suggestions offered in the Inventory admin UI. Categories
-// are otherwise dynamic - the admin can type any new category name for a
-// product (see InventoryPage's categoryOptions, which merges this list with
-// every category already in use) instead of picking from a fixed dropdown.
+// Baseline category suggestions offered in the admin product editor. Categories
+// are otherwise dynamic - staff can type any new category name, and the editor
+// also suggests every category already in use (see fetchAdminSuggestions()).
 export const CATEGORY_OPTIONS = ["Valentine's Special", 'DIY', '2026 Calendars', 'Polaroids', 'Poster', 'Other'];

@@ -28,6 +28,7 @@ export interface Product {
   maxPrice: number;
   totalAvailable: number;
   personalizable: boolean;
+  featured: boolean;
   status: string;
 }
 
@@ -51,16 +52,38 @@ export interface CartItem {
   personalization: Personalization;
 }
 
-export interface Order {
-  id: string;
+export interface CheckoutCustomer {
+  name: string;
+  phone: string;
+  email: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+}
+
+export type OrderStatus = 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
+
+export interface OrderLine {
+  productTitle: string;
+  variantOptions: VariantOption[];
+  unitPrice: number;
+  quantity: number;
+  recipientName: string;
+  message: string;
+  instructions: string;
+}
+
+// What a shopper sees about their own order on "My Orders".
+export interface CustomerOrder {
+  orderNumber: number;
+  status: OrderStatus;
   createdAt: string;
-  customer: {
-    name: string;
-    phone: string;
-    email: string;
-    address: string;
-  };
-  items: CartItem[];
+  customerName: string;
+  addressLine: string;
+  city: string;
+  state: string;
+  pincode: string;
   total: number;
-  status: 'placed' | 'processing' | 'completed';
+  items: (OrderLine & { hasPhoto: boolean })[];
 }

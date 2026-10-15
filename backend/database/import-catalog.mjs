@@ -169,9 +169,10 @@ function buildProducts() {
       return {
         sku: (row['Variant SKU'] || '').trim(),
         options,
-        price: Number.isFinite(price) ? price : 0,
+        price: Number.isFinite(price) ? Math.max(0, price) : 0,
         compare_at_price: Number.isFinite(compareAt) && compareAt > 0 ? compareAt : null,
-        available: Number.isFinite(available) ? available : 0,
+        // Shopify allows negative stock when overselling; the database requires 0 or more.
+        available: Number.isFinite(available) ? Math.max(0, available) : 0,
         image: null,
       };
     });
@@ -188,7 +189,8 @@ function buildProducts() {
       images,
       option_names: Array.from(optionNamesSet),
       personalizable: true,
-      status: headRow.Status || 'active',
+      // Only active products get this far (see the status check above).
+      status: 'active',
       variants,
     });
   }
@@ -232,7 +234,7 @@ async function main() {
     }
 
     if (variants.length > 0) {
-      const rows = variants.map((v) => ({ ...v, product_id: productId }));
+      const rows = variants.map((v, index) => ({ ...v, product_id: productId, position: index }));
       const { error: insertError } = await supabase.from('product_variants').insert(rows);
       if (insertError) {
         console.error(`Failed to insert variants for "${product.handle}":`, insertError.message);
