@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { useCatalog } from '../context/CatalogContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { Link } from 'react-router-dom';
+import Testimonials from '../components/Testimonials';
+
 
 const VALUE_PROPS = [
   { icon: '🎨', title: 'Handmade with love', text: 'Every piece is crafted by hand, not mass produced.' },
@@ -143,6 +145,7 @@ export default function CategoriesPage() {
           ))}
         </div>
       )}
+      <Testimonials />
     </div>
   );
 }
