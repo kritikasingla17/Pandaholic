@@ -3,6 +3,7 @@ import type { MouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCatalog } from '../context/CatalogContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import { Link } from 'react-router-dom';
 
 const VALUE_PROPS = [
   { icon: '🎨', title: 'Handmade with love', text: 'Every piece is crafted by hand, not mass produced.' },
@@ -37,11 +38,11 @@ export default function CategoriesPage() {
   // Products marked "featured" in the admin lead the hero collage; other
   // in-stock products with photos fill any remaining spots.
   const collageImages = useMemo(() => {
-    const candidates = products.filter((p) => p.image && p.totalAvailable > 0);
-    return [...candidates.filter((p) => p.featured), ...candidates.filter((p) => !p.featured)]
-      .slice(0, 4)
-      .map((p) => ({ src: p.image, alt: p.title }));
-  }, [products]);
+  const candidates = products.filter((p) => p.image && p.totalAvailable > 0);
+  return [...candidates.filter((p) => p.featured), ...candidates.filter((p) => !p.featured)]
+    .slice(0, 4)
+    .map((p) => ({ src: p.image, alt: p.title, category: p.category, handle: p.handle }));
+}, [products]);
 
   if (loading) {
     return (
@@ -81,14 +82,19 @@ export default function CategoriesPage() {
           </a>
         </div>
         {collageImages.length > 0 && (
-          <div className="hero-collage" aria-hidden="true">
-            {collageImages.map((img, i) => (
-              <div className={`hero-collage__item hero-collage__item--${i}`} key={img.src + i}>
-                <img src={img.src} alt={img.alt} loading="eager" decoding="async" />
-              </div>
-            ))}
-          </div>
-        )}
+  <div className="hero-collage">
+    {collageImages.map((img, i) => (
+      <Link
+        to={`/category/${encodeURIComponent(img.category)}?product=${encodeURIComponent(img.handle)}`}
+        className={`hero-collage__item hero-collage__item--${i}`}
+        key={img.handle}
+        aria-label={`View ${img.alt}`}
+      >
+        <img src={img.src} alt={img.alt} loading="eager" decoding="async" />
+      </Link>
+    ))}
+  </div>
+)}
       </section>
 
       <div className="value-props">

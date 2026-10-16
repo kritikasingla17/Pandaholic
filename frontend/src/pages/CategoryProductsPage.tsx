@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useCatalog } from '../context/CatalogContext';
 import ProductCard from '../components/ProductCard';
 import ProductModal from '../components/ProductModal';
@@ -13,6 +13,7 @@ export default function CategoryProductsPage() {
   const { products, categories, loading, error } = useCatalog();
   const [search, setSearch] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
   useDocumentTitle(category || undefined);
 
   const filtered = useMemo(() => {
@@ -23,6 +24,26 @@ export default function CategoryProductsPage() {
       return p.title.toLowerCase().includes(query) || p.tags.some((t) => t.toLowerCase().includes(query));
     });
   }, [products, category, search]);
+
+  // A link like /category/Poster?product=god-shiva-poster opens that product's modal.
+  const linkedHandle = searchParams.get('product');
+  const linkedProduct = useMemo(
+    () =>
+      linkedHandle
+        ? products.find((p) => p.handle === linkedHandle && p.category === category) ?? null
+        : null,
+    [products, category, linkedHandle],
+  );
+  const openProduct = selectedProduct ?? linkedProduct;
+
+  const closeProduct = () => {
+    setSelectedProduct(null);
+    if (linkedHandle) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('product');
+      setSearchParams(next, { replace: true });
+    }
+  };
 
   if (loading) {
     return (
@@ -81,9 +102,7 @@ export default function CategoryProductsPage() {
         </div>
       )}
 
-      {selectedProduct && (
-        <ProductModal product={selectedProduct} onClose={() => setSelectedProduct(null)} />
-      )}
+      {openProduct && <ProductModal product={openProduct} onClose={closeProduct} />}
     </div>
   );
 }
